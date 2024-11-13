@@ -1,49 +1,15 @@
 <?php
-session_start();  // Start the session to handle session variables
+session_start();
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+    header('Location: index.php');  // Redirect to login if not an admin
+    exit;
+}
 
-// Include the database connection
 include('db_config.php');
 
-// Check if the form is submitted
-if (isset($_POST['login'])) {
-    $email = $_POST['email'];
-    $password = $_POST['password'];
-
-    // Basic validation
-    if (empty($email) || empty($password)) {
-        $_SESSION['error'] = "Please fill in all fields!";
-    } else {
-        // Query the database for the user
-        $sql = "SELECT * FROM users WHERE email = '$email'";
-        $result = mysqli_query($conn, $sql);
-
-        if (mysqli_num_rows($result) > 0) {
-            $user = mysqli_fetch_assoc($result);
-
-            // Verify the password
-            if (password_verify($password, $user['password'])) {
-                // Set session variables
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['username'] = $user['username'];
-                $_SESSION['email'] = $user['email'];
-                $_SESSION['role'] = $user['role'];  // 'admin' or 'user'
-
-                // Redirect based on role
-                if ($user['role'] == 'admin') {
-                    header('Location: admin_dashboard.php');
-                    exit;  // Ensure no further code is executed after redirect
-                } else {
-                    header('Location: user_dashboard.php');
-                    exit;  // Ensure no further code is executed after redirect
-                }
-            } else {
-                $_SESSION['error'] = "Incorrect password!";
-            }
-        } else {
-            $_SESSION['error'] = "No user found with that email!";
-        }
-    }
-}
+// Fetch all users
+$sql = "SELECT * FROM users";
+$result = mysqli_query($conn, $sql);
 ?>
 
 <!DOCTYPE html>
@@ -51,29 +17,40 @@ if (isset($_POST['login'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
-    <link rel="stylesheet" href="style.css"> <!-- Link to your CSS -->
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="login-container">
-        <h2>Login</h2>
+    <div class="dashboard-container">
+        <h1>Welcome, Admin!</h1>
 
-        <!-- Display error message if any -->
-        <?php
-        if (isset($_SESSION['error'])) {
-            echo "<p class='error'>" . $_SESSION['error'] . "</p>";
-            unset($_SESSION['error']);
-        }
-        ?>
+        <!-- Display All Users -->
+        <h3>All Users</h3>
+        <table border="1">
+            <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Actions</th>
+            </tr>
+            <?php while ($row = mysqli_fetch_assoc($result)): ?>
+                <tr>
+                    <td><?php echo $row['id']; ?></td>
+                    <td><?php echo $row['username']; ?></td>
+                    <td><?php echo $row['email']; ?></td>
+                    <td><?php echo $row['role']; ?></td>
+                    <td>
+                        <a href="edit_user.php?id=<?php echo $row['id']; ?>">Edit</a> |
+                        <a href="delete_user.php?id=<?php echo $row['id']; ?>">Delete</a>
+                    </td>
+                </tr>
+            <?php endwhile; ?>
+        </table>
 
-        <!-- Login form -->
-        <form action="index.php" method="POST">
-            <input type="email" name="email" placeholder="Email" required>
-            <input type="password" name="password" placeholder="Password" required>
-            <button type="submit" name="login">Login</button>
+        <form action="logout.php" method="POST">
+            <button type="submit">Logout</button>
         </form>
-
-        <p>Don't have an account? <a href="signup.php">Sign up</a></p>
     </div>
 </body>
 </html>
